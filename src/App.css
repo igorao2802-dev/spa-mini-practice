@@ -1,259 +1,243 @@
-/* App.css */
-/* Сброс и базовые стили */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* App.css — Стили для системы бронирования помещений */
 
-body {
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: #f0f4f8;
-  color: #333;
-  line-height: 1.5;
-}
-
-/* Приложение */
 .app {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
 
-.app-header {
-  background: #1e4d8c;
+/* Layout */
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout__header {
+  background: linear-gradient(135deg, #3498db, #2c3e50);
   color: #fff;
   padding: 24px 32px;
-  border-radius: 12px;
-  margin-bottom: 24px;
   text-align: center;
+  border-radius: 0 0 16px 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.app-header h1 {
+.layout__header h1 {
   font-size: 1.8rem;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
-.app-header p {
+.layout__header p {
   opacity: 0.9;
   font-size: 1rem;
+}
+
+.layout__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 /* Секции */
 .section {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px 24px;
-  margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .section h2 {
   font-size: 1.3rem;
   margin-bottom: 16px;
-  color: #1e4d8c;
-  border-bottom: 2px solid #e8f0fe;
-  padding-bottom: 8px;
+  color: #2c3e50;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 10px;
 }
 
-/* Сетка карточек */
-.course-grid {
+/* Форма бронирования */
+.booking-form {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-/* Карточка помещения (адаптация course-card) */
-.flat_card_wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.flat_card {
-  padding: 16px;
-  border: 1px solid #d0dff5;
-  border-radius: 10px;
-  background: #f8faff;
-  cursor: pointer;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  text-align: center;
-}
-
-.flat_card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(30, 77, 140, 0.15);
-}
-
-.flat_card img {
-  border-radius: 6px;
-  margin-bottom: 12px;
-  background: #e8f0fe;
-  object-fit: cover;
-}
-
-.flat_card p {
-  margin: 4px 0;
-  font-size: 0.95rem;
-}
-
-.flat_card p:first-of-type {
-  font-weight: 700;
-  color: #1e4d8c;
-  font-size: 1.1rem;
-}
-
-.flat_card p:last-of-type {
-  color: #2e7d32;
-  font-weight: 600;
-}
-
-/* Бейдж статуса (PRO) */
-.badge {
-  display: inline-block;
-  background: #e8f0fe;
-  color: #1e4d8c;
-  font-size: 0.75rem;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 12px;
-  margin-bottom: 8px;
-}
-
-.badge.popular {
-  background: #fff3e0;
-  color: #ef6c00;
-}
-
-.badge.new {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-/* Счётчик гостей */
-.counter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
-  padding: 16px;
-  background: #f8faff;
-  border-radius: 8px;
-  border: 1px solid #d0dff5;
+  align-items: end;
 }
 
-.counter__value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e4d8c;
-}
-
-.counter__buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.counter__buttons button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  background: #1e4d8c;
-  color: #fff;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.2s;
-  min-width: 60px;
-}
-
-.counter__buttons button:hover {
-  background: #163a6e;
-}
-
-.counter__buttons button:active {
-  transform: scale(0.98);
-}
-
-/* Поиск */
-.search-bar {
+.booking-form__field {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-width: 500px;
+  gap: 6px;
 }
 
-.search-bar__input {
-  padding: 12px 16px;
-  border: 2px solid #c0cfe8;
+.booking-form__field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.booking-form__field input,
+.booking-form__field select {
+  padding: 10px 14px;
+  border: 2px solid #bdc3c7;
   border-radius: 8px;
   font-size: 1rem;
-  outline: none;
   transition: border-color 0.2s;
 }
 
-.search-bar__input:focus {
-  border-color: #1e4d8c;
+.booking-form__field input:focus,
+.booking-form__field select:focus {
+  outline: none;
+  border-color: #3498db;
 }
 
-.search-bar__clear {
-  align-self: flex-end;
-  background: #f44336;
-  color: white;
+.booking-form__submit {
+  padding: 12px 24px;
+  background: #27ae60;
+  color: #fff;
   border: none;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  border-radius: 8px;
   font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s;
+}
+
+.booking-form__submit:hover {
+  background: #219a52;
+}
+
+.booking-form__submit:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* Фильтр */
+.filter-panel {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.search-bar__clear:hover {
-  background: #d32f2f;
+.filter-panel__btn {
+  padding: 8px 16px;
+  border: 2px solid #3498db;
+  background: #fff;
+  color: #3498db;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.search-bar__counter {
-  font-size: 0.85rem;
-  color: #666;
-  text-align: right;
+.filter-panel__btn:hover {
+  background: #ecf0f1;
+}
+
+.filter-panel__btn--active {
+  background: #3498db;
+  color: #fff;
 }
 
 /* Список броней */
-.student-list {
-  list-style: none;
+.booking-list__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7f8c8d;
+  font-size: 1.1rem;
+}
+
+.booking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* Карточка бронирования */
+.booking-card {
+  background: #f8f9fa;
+  border: 1px solid #e0e6ed;
+  border-radius: 12px;
+  padding: 16px;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  position: relative;
+}
+
+.booking-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.booking-card__badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.booking-card__badge--confirmed {
+  background: #d4edda;
+  color: #155724;
+}
+
+.booking-card__badge--pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.booking-card__title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  padding-right: 70px;
+}
+
+.booking-card__info {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.student-list li {
-  padding: 12px 16px;
-  background: #f0f4f8;
-  border-radius: 6px;
+  gap: 6px;
   font-size: 0.95rem;
-  border-left: 4px solid #1e4d8c;
+  color: #34495e;
 }
 
-.student-list li strong {
-  color: #1e4d8c;
+.booking-card__info strong {
+  color: #2c3e50;
+}
+
+.booking-card__delete {
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.booking-card__delete:hover {
+  background: #c0392b;
 }
 
 /* Адаптивность */
 @media (max-width: 768px) {
-  .course-grid {
+  .booking-form {
     grid-template-columns: 1fr;
   }
 
-  .app-header h1 {
-    font-size: 1.4rem;
+  .booking-grid {
+    grid-template-columns: 1fr;
   }
 
-  .section {
-    padding: 16px;
+  .layout__header h1 {
+    font-size: 1.4rem;
   }
 }
