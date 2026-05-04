@@ -68,9 +68,13 @@ export default function App() {
   }
 
   function handleDelete(id) {
+    // ПОЧЕМУ? filter, а не splice?
+    // splice() мутирует исходный массив, а в React state нельзя мутировать напрямую.
+    // filter() возвращает новый массив — React видит изменение ссылки и корректно
+    // запускает ре-рендер. Это гарантирует предсказуемость состояния и работу
+    // механизма сравнения (reconciliation) в React.
     setServices((prev) => prev.filter((item) => item.id !== id));
   }
-
   function handleUpdateService(id, updatedFields) {
     setServices((prev) =>
       prev.map((item) =>

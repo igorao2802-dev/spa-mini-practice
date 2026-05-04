@@ -13,20 +13,25 @@ export default function ServiceCard({
   onDelete, 
   onUpdate 
 }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ 
+// ПОЧЕМУ? Логика редактирования (isEditing, handleSave, editData) необходима для темы 
+// «Салон «Здоровье и красота»»: клиент может изменить услугу, специалиста или время 
+// записи ДО момента подтверждения администратором. После подтверждения (статус 
+// "Подтверждено") редактирование блокируется — это соответствует бизнес-правилам 
+// реального салона, где подтверждённая запись фиксируется в расписании мастера.
+// Реализовано через локальный useState + callback onUpdate для lifting state up.
+const [isEditing, setIsEditing] = useState(false);  const [editData, setEditData] = useState({ 
     serviceName, 
     specialist, 
     category, 
     duration 
   });
 
-  function handleSave() {
-    if (!editData.serviceName || !editData.specialist || !editData.category) return;
-    onUpdate(id, editData);
-    setIsEditing(false);
-  }
-
+function handleSave() {
+  // ПОЧЕМУ? Проверяем через trim(), чтобы отклонить ввод, состоящий только из пробелов
+  if (!editData.serviceName.trim() || !editData.specialist.trim() || !editData.category.trim()) return;
+  onUpdate(id, editData);
+  setIsEditing(false);
+}
   const badgeClass = status === "Подтверждено"
     ? "service-card__badge service-card__badge--confirmed"
     : "service-card__badge service-card__badge--pending";

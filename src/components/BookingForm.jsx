@@ -29,11 +29,12 @@ export default function BookingForm({ onAddItem, existingServices }) {
     setError("");
     
     // ПОЧЕМУ? Теперь проверяем только обязательные поля (serviceName и category)
-    if (!serviceName || !category) {
-      setError("Заполните все обязательные поля");
-      return;
-    }
-
+// ПОЧЕМУ? Используем .trim(), чтобы отклонить ввод, состоящий только из пробелов
+// Это предотвращает создание записей с «пустыми» названиями услуг
+if (!serviceName.trim() || !category.trim()) {
+  setError("Заполните все обязательные поля");
+  return;
+}
     onAddItem({
       id: Date.now(),
       serviceName,
@@ -110,8 +111,6 @@ export default function BookingForm({ onAddItem, existingServices }) {
           required 
         />
       </div>
-
-      {/* ПОЧЕМУ? Поле "Стоимость" удалено по требованию */}
 
       <div className="booking-form__field">
         <label>Статус</label>
