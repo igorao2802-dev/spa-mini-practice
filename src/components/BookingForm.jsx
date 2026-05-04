@@ -1,109 +1,85 @@
 import { useState } from "react";
 
-export default function BookingForm({ onAddItem, existingBookings }) {
+// ПОЧЕМУ? Форма вынесена в отдельный компонент для соблюдения принципа единственной ответственности (SRP).
+// Это упрощает тестирование, валидацию и повторное использование.
+export default function BookingForm({ onAddItem }) {
   const [roomName, setRoomName] = useState("");
-  const [eventName, setEventName] = useState("");
+  const [specialist, setSpecialist] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [jobTitle, setJobTitle] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
   const [date, setDate] = useState("");
+  const [duration, setDuration] = useState("30"); // ПОЧЕМУ? По умолчанию 30 минут согласно ТЗ.
   const [status, setStatus] = useState("Ожидание");
   const [error, setError] = useState("");
 
-  const ROOMS = ["Переговорная комната", "Конференц-зал", "Банкетный зал", "Спортивный уголок"];
+  // ПОЧЕМУ? Список помещений вынесен в константу для централизованного управления и легкого расширения.
+  // Если тема проекта сменилась на «Салон/Клинику», замените значения на ["Стрижка", "Маникюр", ...]
+  const SERVICES = ["Стрижка", "Маникюр", "Массаж", "Консультация врача"];
 
-  // Расчет прогресса: 4 обязательных поля (Помещение, Мероприятие, Заказчик, Дата)
-  const requiredFilled = [roomName, eventName, customerName, date].filter((v) => v.trim() !== "").length;
+  // ПОЧЕМУ? Прогресс-бар считает только обязательные поля (услуга, клиент, телефон, дата).
+  const requiredFilled = [roomName, customerName, customerPhone, date].filter((v) => v.trim() !== "").length;
   const progressPercent = (requiredFilled / 4) * 100;
 
-  // ПОЧЕМУ? Отдельная функция проверки пересечений, а не валидация в handleSubmit?
-  // 1. Разделение ответственности: проверка бизнес-правил (пересечение времени)
-  //    отделена от общей валидации формы.
-  // 2. Переиспользование: эту логику можно вызвать при изменении поля даты/помещения
-  //    для мгновенной обратной связи пользователю.
-  function checkTimeOverlap(newDate, newRoom) {
-    if (!newDate || !newRoom) return null;
-    const newTime = new Date(newDate).getTime();
+  // ПОЧЕМУ? Валидация телефона вынесена в отдельную функцию для чистоты кода и переиспользования.
+  const validatePhone = (phone) => {
+    const validOperators = ["17", "25", "29", "33", "44"];
+    const code = phone.slice(0, 2);
+    return validOperators.includes(code) && phone.length === 9 && /^\d+$/.test(phone);
+  };
 
-    // ПОЧЕМУ? Сравниваем toDateString() для проверки того же дня?
-    // Бронирование на разные даты не конфликтует, даже если время одинаковое.
-    // toDateString() отбрасывает время, оставляя только дату (год-месяц-день).
-    const conflicts = existingBookings.filter((booking) => {
-      if (booking.roomName !== newRoom) return false;
-      
-      const existingDate = new Date(booking.date);
-      const isSameDay = existingDate.toDateString() === new Date(newDate).toDateString();
-      
-      if (!isSameDay) return false;
-
-      const existingTime = existingDate.getTime();
-      const diffMinutes = Math.abs(newTime - existingTime) / (1000 * 60);
-      
-      // ПОЧЕМУ? Интервал 15 минут, а не 0?
-      // Бронирование с разницей в 1-2 минуты технически возможно (между встречами),
-      // но на практике нужно время на подготовку помещения.
-      // 15 минут — разумный буфер для уборки/настройки.
-      return diffMinutes < 15;
-    });
-
-    return conflicts.length > 0 ? `⚠️ Время пересекается с существующей бронью (интервал < 15 мин)` : null;
-  }
+  // ПОЧЕМУ? Обработчик ввода телефона фильтрует только цифры и ограничивает длину до 9 символов.
+  // Это предотвращает ввод некорректных данных ещё на этапе набора.
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 9);
+    setCustomerPhone(value);
+  };
 
   function handleSubmit(e) {
-    // ПОЧЕМУ? e.preventDefault() обязателен для форм?
-    // По умолчанию форма отправляется с перезагрузкой страницы (full page reload).
-    // В React SPA мы хотим обрабатывать данные без перезагрузки,
-    // поэтому отменяем стандартное поведение браузера.
-    e.preventDefault();
+    e.preventDefault(); /* ПОЧЕМУ? preventDefault отменяет стандартную отправку формы, предотвращая перезагрузку страницы. */
     setError("");
 
-    // ПОЧЕМУ? Проверяем .trim(), а не просто на пустую строку?
-    // Пользователь может случайно ввести пробелы (например, "   ").
-    // Такая строка технически не пустая, но не содержит полезных данных.
-    // trim() удаляет пробелы по краям перед проверкой.
-    if (!roomName || !eventName || !customerName || !date) {
-      setError("Заполните все обязательные поля");
+    // Валидация обязательных полей
+    if (!roomName || !customerName || !customerPhone || !date) {
+      setError("⚠️ Заполните все обязательные поля");
+      return;
+    }
+    if (customerName.trim().length < 2) {
+      setError("⚠️ Имя клиента должно содержать минимум 2 символа");
+      return;
+    }
+    if (!validatePhone(customerPhone)) {
+      setError("⚠️ Неверный формат телефона. Введите код оператора (29, 33, 44, 17) и 7 цифр номера");
       return;
     }
 
-    // Проверка на пересечение времени
-    const overlapError = checkTimeOverlap(date, roomName);
-    if (overlapError) {
-      setError(overlapError);
-      return;
-    }
-
-    // ПОЧЕМУ? Создаем newItem с id: Date.now(), а не используем библиотеку nanoid?
-    // Для учебного проекта Date.now() достаточно:
-    // 1. Гарантирует уникальность в рамках одной сессии (между кликами проходит >1ms).
-    // 2. Не требует установки дополнительных зависимостей.
-    // В продакшене лучше использовать nanoid или uuid для абсолютной уникальности.
-    onAddItem({
-      id: Date.now(),
+    const newItem = {
       roomName,
-      eventName,
-      customerName,
-      jobTitle,
+      specialist: specialist.trim() || "Не указан", /* ПОЧЕМУ? Специалист не обязателен, поэтому ставим значение по умолчанию. */
+      customerName: customerName.trim(),
+      customerPhone: `+375${customerPhone}`, /* ПОЧЕМУ? Форматируем номер под белорусский стандарт перед сохранением. */
       date,
+      duration: parseInt(duration, 10),
       status,
-    });
+    };
 
-    // ПОЧЕМУ? Очищаем все поля вручную, а не используем сброс формы?
-    // Это управляемый компонент (controlled component): React полностью контролирует
-    // значения инпутов через state. Сброс через form.reset() не сработает,
-    // так как значения берутся из state, а не из DOM.
-    setRoomName("");
-    setEventName("");
-    setCustomerName("");
-    setJobTitle("");
-    setDate("");
-    setStatus("Ожидание");
+    const result = onAddItem(newItem);
+
+    // ПОЧЕМУ? Проверяем результат валидации перед очисткой формы.
+    if (result && result.success) {
+      setRoomName("");
+      setSpecialist("");
+      setCustomerName("");
+      setCustomerPhone("");
+      setDate("");
+      setDuration("30");
+      setStatus("Ожидание");
+    } else if (result && result.error) {
+      setError(result.error);
+    }
   }
 
   return (
     <form className="booking-form" onSubmit={handleSubmit}>
-      {/* ПОЧЕМУ? Прогресс-бар на основе заполненности полей?
-          Визуальная обратная связь мотивирует пользователя заполнить форму до конца.
-          Это UX-паттерн, который повышает конверсию (completion rate). */}
       <div className="progress-bar">
         <div className="progress-bar__fill" style={{ width: `${progressPercent}%` }} />
       </div>
@@ -112,78 +88,64 @@ export default function BookingForm({ onAddItem, existingBookings }) {
 
       <div className="booking-form__field">
         <label>Помещение *</label>
-        {/* ПОЧЕМУ? select вместо input type="text" для помещения?
-            1. Валидация на уровне UI: пользователь не введет несуществующее помещение.
-            2. UX: быстрее выбрать из списка, чем печатать.
-            3. Консистентность данных: одинаковые названия помещений для фильтрации. */}
         <select value={roomName} onChange={(e) => setRoomName(e.target.value)} required>
           <option value="">Выберите помещение</option>
-          {ROOMS.map((room) => (
-            <option key={room} value={room}>{room}</option>
-          ))}
+          {SERVICES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
       <div className="booking-form__field">
-        <label>Наименование мероприятия *</label>
+        <label>Специалист (необязательно)</label>
         <input
           type="text"
-          value={eventName}
-          onChange={(e) => setEventName(e.target.value)}
-          placeholder="Совещание отдела"
-          maxLength={60}
-          required
+          value={specialist}
+          onChange={(e) => setSpecialist(e.target.value)}
+          placeholder="ФИО мастера"
+          maxLength={50}
         />
       </div>
 
       <div className="booking-form__field">
-        <label>Заказчик *</label>
+        <label>ФИО Клиента *</label>
         <input
           type="text"
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="ФИО заказчика"
+          placeholder="Иванов Иван Иванович"
           maxLength={50}
           required
         />
       </div>
 
       <div className="booking-form__field">
-        <label>Должность</label>
+        <label>Телефон *</label>
         <input
-          type="text"
-          value={jobTitle}
-          onChange={(e) => setJobTitle(e.target.value)}
-          placeholder="Должность (необязательно)"
-          maxLength={40}
-        />
-      </div>
-
-      <div className="booking-form__field">
-        <label>Дата и время *</label>
-        {/* ПОЧЕМУ? input type="datetime-local", а не отдельные date и time?
-            1. Проще валидация: одно значение вместо двух.
-            2. Меньше полей — лучше UX.
-            3. Стандартный HTML5 тип поддерживает мобильные устройства (нативный picker). */}
-        <input
-          type="datetime-local"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
+          type="tel"
+          value={customerPhone}
+          onChange={handlePhoneChange}
+          placeholder="29 123 45 67"
           required
         />
       </div>
 
       <div className="booking-form__field">
-        <label>Статус</label>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="Ожидание">Ожидание</option>
-          <option value="Подтверждено">Подтверждено</option>
-        </select>
+        <label>Дата и время *</label>
+        <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} required />
       </div>
 
-      <button type="submit" className="booking-form__submit">
-        ➕ Забронировать
-      </button>
+      <div className="booking-form__field">
+        <label>Длительность (мин) *</label>
+        <input
+          type="number"
+          value={duration}
+          onChange={(e) => setDuration(e.target.value)}
+          min="5"
+          step="5"
+          required
+        />
+      </div>
+
+      <button type="submit" className="booking-form__submit">➕ Забронировать</button>
     </form>
   );
 }
