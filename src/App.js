@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 import Layout from "./components/Layout";
-import BookingForm from "./components/FilterPanel";
+import BookingForm from "./components/BookingForm";
 import ServiceList from "./components/ServiceList";
 import FilterPanel from "./components/FilterPanel";
 import Footer from "./components/Footer";
