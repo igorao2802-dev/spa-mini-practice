@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-// ПОЧЕМУ? Управляемая форма: все поля хранятся в state
-// Это позволяет валидировать и очищать форму программно
+// ПОЧЕМУ? Управляемая форма: состояние хранится в React, 
+// что позволяет мгновенно валидировать ввод, управлять прогрессом и очищать поля программно.
 export default function BookingForm({ onAddItem }) {
   const [serviceName, setServiceName] = useState("");
   const [specialist, setSpecialist] = useState("");
@@ -10,53 +10,97 @@ export default function BookingForm({ onAddItem }) {
   const [appointmentDateTime, setAppointmentDateTime] = useState("");
   const [duration, setDuration] = useState("30");
   const [status, setStatus] = useState("Ожидание");
-  const [error, setError] = useState("");
+  
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // ПОЧЕМУ? Списки услуг и специалистов вынесены в константы
-  // Это обеспечивает консистентность данных между формой и карточками
   const SERVICES = [
-    "Стрижка женская",
-    "Стрижка мужская",
-    "Укладка волос",
-    "Окрашивание волос",
-    "Маникюр классический",
-    "Педикюр",
-    "Массаж расслабляющий",
-    "Массаж лечебный",
-    "Чистка лица",
-    "SPA-процедуры"
+    "Стрижка женская", "Стрижка мужская", "Укладка волос", "Окрашивание волос",
+    "Маникюр классический", "Педикюр", "Массаж расслабляющий", "Массаж лечебный",
+    "Чистка лица", "SPA-процедуры"
   ];
 
   const SPECIALISTS = [
-    "Анна Михайлова",
-    "Иван Сидоров",
-    "Елена Петрова",
-    "Михаил Козлов",
-    "Ольга Смирнова"
+    "Анна Михайлова", "Иван Сидоров", "Елена Петрова", "Михаил Козлов", "Ольга Смирнова"
   ];
 
-  // Расчет прогресса заполнения формы (4 обязательных поля)
-  const requiredFilled = [serviceName, customerName, customerPhone, appointmentDateTime]
-    .filter((v) => v && v.trim() !== "").length;
-  const progressPercent = (requiredFilled / 4) * 100;
+  // ПОЧЕМУ? Валидация вынесена в отдельную функцию для переиспользования 
+  // в форме и в режиме редактирования карточки.
+  const validate = (field, value) => {
+    const errs = { ...errors };
+    switch (field) {
+      case "customerName":
+        if (!value.trim() || value.trim().length < 3) errs[field] = "Минимум 3 символа (буквы, пробелы, дефис)";
+        else if (!/^[a-zA-Zа-яА-ЯёЁ\s\-]+$/.test(value)) errs[field] = "Только буквы, пробелы и дефис";
+        else delete errs[field];
+        break;
+      case "customerPhone":
+        if (!/^(17|25|29|33|44)\s\d{3}\s\d{2}\s\d{2}$/.test(value)) 
+          errs[field] = "Формат: 29 123 45 67 (только цифры и пробелы)";
+        else delete errs[field];
+        break;
+      case "appointmentDateTime":
+        if (!value || new Date(value) <= new Date()) errs[field] = "Выберите будущую дату и время";
+        else delete errs[field];
+        break;
+      case "duration":
+        const d = parseInt(value, 10);
+        if (isNaN(d) || d < 30 || d > 480 || d % 5 !== 0) errs[field] = "От 30 до 480 мин, шаг 5";
+        else delete errs[field];
+        break;
+      default:
+        break;
+    }
+    return errs;
+  };
+
+  const handleBlur = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    setErrors(validate(field, field === "customerName" ? customerName : 
+                              field === "customerPhone" ? customerPhone : 
+                              field === "appointmentDateTime" ? appointmentDateTime : duration));
+  };
+
+  const handlePhoneChange = (e) => {
+    // ПОЧЕМУ? Форматируем ввод на лету, оставляя только цифры и расставляя пробелы по маске
+    let digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+    let formatted = "";
+    if (digits.length > 0) formatted = digits.slice(0, 2);
+    if (digits.length > 2) formatted += " " + digits.slice(2, 5);
+    if (digits.length > 5) formatted += " " + digits.slice(5, 7);
+    if (digits.length > 7) formatted += " " + digits.slice(7, 9);
+    setCustomerPhone(formatted);
+    setErrors(prev => {
+      const next = { ...prev };
+      if (/^(17|25|29|33|44)\s\d{3}\s\d{2}\s\d{2}$/.test(formatted)) delete next.customerPhone;
+      else if (touched.customerPhone || isSubmitted) next.customerPhone = "Формат: 29 123 45 67";
+      return next;
+    });
+  };
+
+  // ПОЧЕМУ? Прогресс зависит от валидности, а не просто от заполненности.
+  // Это мотивирует пользователя вводить корректные данные, а не случайный текст.
+  const isValidService = SERVICES.includes(serviceName);
+  const isValidName = !errors.customerName && customerName.trim().length >= 3;
+  const isValidPhone = !errors.customerPhone && /^(17|25|29|33|44)\s\d{3}\s\d{2}\s\d{2}$/.test(customerPhone);
+  const isValidDate = !errors.appointmentDateTime && appointmentDateTime && new Date(appointmentDateTime) > new Date();
+  
+  const validCount = [isValidService, isValidName, isValidPhone, isValidDate].filter(Boolean).length;
+  const progressPercent = (validCount / 4) * 100;
 
   function handleSubmit(e) {
-    // ПОЧЕМУ? preventDefault() предотвращает перезагрузку страницы
-    // при отправке формы, что критично для SPA
     e.preventDefault();
-    setError("");
-
-    // ПОЧЕМУ? Используем .trim(), чтобы отклонить ввод, состоящий только из пробелов
-    // Это предотвращает создание записей с «пустыми» данными
-    if (!serviceName.trim() || !customerName.trim() || !customerPhone.trim() || !appointmentDateTime) {
-      setError("Заполните все обязательные поля");
-      return;
-    }
-
-    // Валидация телефона (минимум 10 цифр)
-    const phoneDigits = customerPhone.replace(/\D/g, "");
-    if (phoneDigits.length < 10) {
-      setError("Введите корректный номер телефона (минимум 10 цифр)");
+    setIsSubmitted(true);
+    
+    // Валидируем все обязательные поля перед отправкой
+    const newErrors = validate("customerName", customerName);
+    Object.assign(newErrors, validate("customerPhone", customerPhone));
+    Object.assign(newErrors, validate("appointmentDateTime", appointmentDateTime));
+    Object.assign(newErrors, validate("duration", duration));
+    
+    if (!isValidService || Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -64,120 +108,76 @@ export default function BookingForm({ onAddItem }) {
       id: Date.now(),
       serviceName,
       specialist,
-      customerName,
+      customerName: customerName.trim(),
       customerPhone,
       appointmentDateTime,
       duration: parseInt(duration, 10),
-      status,
+      status
     });
 
-    // ПОЧЕМУ? Очищаем форму после успешной отправки
-    setServiceName("");
-    setSpecialist("");
-    setCustomerName("");
-    setCustomerPhone("");
-    setAppointmentDateTime("");
-    setDuration("30");
-    setStatus("Ожидание");
+    // Сброс состояния
+    setServiceName(""); setSpecialist(""); setCustomerName("");
+    setCustomerPhone(""); setAppointmentDateTime(""); setDuration("30");
+    setStatus("Ожидание"); setErrors({}); setTouched({}); setIsSubmitted(false);
   }
+
+  const inputClass = (field) => `booking-form__input ${errors[field] && (touched[field] || isSubmitted) ? "input--error" : ""}`;
 
   return (
     <form className="booking-form" onSubmit={handleSubmit}>
       <div className="progress-bar">
-        <div
-          className="progress-bar__fill"
-          style={{ width: `${progressPercent}%` }}
-        />
+        <div className="progress-bar__fill" style={{ width: `${progressPercent}%` }} />
       </div>
-      {error && <p className="form-error">{error}</p>}
+      {Object.keys(errors).length > 0 && isSubmitted && (
+        <p className="form-error">Исправьте ошибки в отмеченных полях</p>
+      )}
 
       <div className="booking-form__field">
         <label>Услуга *</label>
-        <select 
-          value={serviceName} 
-          onChange={(e) => setServiceName(e.target.value)} 
-          required 
-        >
+        <select className={inputClass("serviceName")} value={serviceName} onChange={e => setServiceName(e.target.value)} required>
           <option value="">Выберите услугу</option>
-          {SERVICES.map((service) => (
-            <option key={service} value={service}>{service}</option>
-          ))}
+          {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
       <div className="booking-form__field">
         <label>Специалист</label>
-        <select 
-          value={specialist} 
-          onChange={(e) => setSpecialist(e.target.value)}
-        >
+        <select className="booking-form__input" value={specialist} onChange={e => setSpecialist(e.target.value)}>
           <option value="">Не выбран</option>
-          {SPECIALISTS.map((spec) => (
-            <option key={spec} value={spec}>{spec}</option>
-          ))}
+          {SPECIALISTS.map(sp => <option key={sp} value={sp}>{sp}</option>)}
         </select>
       </div>
 
       <div className="booking-form__field">
         <label>ФИО заказчика *</label>
-        <input 
-          type="text" 
-          value={customerName} 
-          onChange={(e) => setCustomerName(e.target.value)} 
-          placeholder="Введите ваше ФИО"
-          maxLength={100}
-          required 
-        />
+        <input className={inputClass("customerName")} type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} onBlur={() => handleBlur("customerName")} placeholder="Иванов Иван Иванович" maxLength={100} required />
       </div>
 
       <div className="booking-form__field">
-        <label>Номер телефона *</label>
-        <input 
-          type="tel" 
-          value={customerPhone} 
-          onChange={(e) => setCustomerPhone(e.target.value)} 
-          placeholder="+7 (___) ___-__-__"
-          maxLength={20}
-          required 
-        />
+        <label>Телефон * (+375)</label>
+        <input className={inputClass("customerPhone")} type="text" value={customerPhone} onChange={handlePhoneChange} onBlur={() => handleBlur("customerPhone")} placeholder="29 123 45 67" maxLength={11} required />
       </div>
 
       <div className="booking-form__field">
-        <label>Дата и время записи *</label>
-        <input 
-          type="datetime-local" 
-          value={appointmentDateTime} 
-          onChange={(e) => setAppointmentDateTime(e.target.value)} 
-          min={new Date().toISOString().slice(0, 16)}
-          required 
-        />
+        <label>Дата и время *</label>
+        <input className={inputClass("appointmentDateTime")} type="datetime-local" value={appointmentDateTime} onChange={e => setAppointmentDateTime(e.target.value)} onBlur={() => handleBlur("appointmentDateTime")} min={new Date().toISOString().slice(0, 16)} required />
       </div>
 
       <div className="booking-form__field">
         <label>Длительность (мин)</label>
-        <input 
-          type="number" 
-          value={duration} 
-          onChange={(e) => setDuration(e.target.value)} 
-          min="30" 
-          step="5"
-          required 
-        />
+        <input className={inputClass("duration")} type="number" value={duration} onChange={e => { setDuration(e.target.value); handleBlur("duration"); }} min="30" max="480" step="5" required />
       </div>
 
       <div className="booking-form__field">
         <label>Статус</label>
-        <select 
-          value={status} 
-          onChange={(e) => setStatus(e.target.value)}
-        >
+        <select className="booking-form__input" value={status} onChange={e => setStatus(e.target.value)}>
           <option value="Ожидание">Ожидание</option>
           <option value="Подтверждено">Подтверждено</option>
         </select>
       </div>
 
       <button type="submit" className="booking-form__submit">
-        ➕ Записаться
+        <span className="btn-icon">➕</span> Записаться
       </button>
     </form>
   );

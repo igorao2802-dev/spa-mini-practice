@@ -1,125 +1,150 @@
 import { useState, useEffect } from "react";
-import "./App.css";
 import Layout from "./components/Layout";
 import BookingForm from "./components/BookingForm";
-import ServiceList from "./components/ServiceList";
-import FilterPanel from "./components/FilterPanel";
-import Footer from "./components/Footer";
+import ServiceCard from "./components/ServiceCard";
 
-// ПОЧЕМУ? Начальные данные вынесены за пределы компонента —
-// они не пересоздаются при каждом рендере.
-const INITIAL_SERVICES = [
+// ПОЧЕМУ? Ключ для localStorage вынесен в константу — упрощает поддержку и миграцию данных.
+const STORAGE_KEY = "salon-bookings-v1";
+
+const INITIAL_ITEMS = [
   {
     id: 1,
     serviceName: "Стрижка женская",
     specialist: "Анна Михайлова",
-    category: "Парикмахерские услуги",
+    customerName: "Иванова Мария",
+    customerPhone: "29 111 22 33",
+    appointmentDateTime: "2026-05-10T14:00",
     duration: 60,
-    price: "1500 RUB",
     status: "Ожидание",
   },
   {
     id: 2,
-    serviceName: "Маникюр классический",
-    specialist: "Елена Петрова",
-    category: "Ногтевой сервис",
+    serviceName: "Массаж расслабляющий",
+    specialist: "Иван Сидоров",
+    customerName: "Петров Алексей",
+    customerPhone: "33 444 55 66",
+    appointmentDateTime: "2026-05-12T10:30",
     duration: 90,
-    price: "1200 RUB",
     status: "Подтверждено",
   },
   {
     id: 3,
-    serviceName: "Массаж расслабляющий",
-    specialist: "Иван Сидоров",
-    category: "Массаж",
-    duration: 60,
-    price: "2000 RUB",
+    serviceName: "Маникюр классический",
+    specialist: "Елена Петрова",
+    customerName: "Сидорова Ольга",
+    customerPhone: "44 777 88 99",
+    appointmentDateTime: "2026-05-08T16:00",
+    duration: 45,
     status: "Ожидание",
   },
 ];
 
-const STORAGE_KEY = "beauty-salon-bookings-v1";
-
 export default function App() {
-  const [services, setServices] = useState(() => {
+  // ПОЧЕМУ? Функция-инициализатор выполняется только при монтировании,
+  // предотвращая лишние чтения из localStorage при каждом рендере.
+  const [items, setItems] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : INITIAL_SERVICES;
+      return saved ? JSON.parse(saved) : INITIAL_ITEMS;
     } catch {
-      return INITIAL_SERVICES;
+      return INITIAL_ITEMS;
     }
   });
 
-  const [filter, setFilter] = useState("Все");
-  const [sortOrder, setSortOrder] = useState("asc");
+  const [filterStatus, setFilterStatus] = useState("Все");
+  const [sortBy, setSortBy] = useState("soonest");
 
-  // ПОЧЕМУ? useEffect для localStorage — это side effect,
-  // который выполняется после рендера
+  // ПОЧЕМУ? useEffect для side-effects. Синхронизация состояния React с внешним хранилищем
+  // должна происходить после успешного рендера, чтобы не блокировать UI.
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(services));
-    } catch {
-      console.warn("⚠️ Ошибка сохранения в localStorage");
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.error("Ошибка сохранения в localStorage:", e);
     }
-  }, [services]);
+  }, [items]);
 
   function handleAddItem(newItem) {
-    setServices((prev) => [...prev, newItem]);
+    // ПОЧЕМУ? Функциональное обновление гарантирует работу с актуальным стейтом
+    // при быстрых последовательных добавлениях (React batching).
+    setItems((prev) => [...prev, { ...newItem, id: Date.now() }]);
   }
 
   function handleDelete(id) {
-    // ПОЧЕМУ? filter, а не splice?
-    // splice() мутирует исходный массив, а в React state нельзя мутировать напрямую.
-    // filter() возвращает новый массив — React видит изменение ссылки и корректно
-    // запускает ре-рендер. Это гарантирует предсказуемость состояния и работу
-    // механизма сравнения (reconciliation) в React.
-    setServices((prev) => prev.filter((item) => item.id !== id));
+    // ПОЧЕМУ? filter создаёт новый массив, сохраняя иммутабельность стейта.
+    // splice мутирует исходный массив, что ломает механизм сравнения React и ведёт к багам рендера.
+    setItems((prev) => prev.filter((item) => item.id !== id));
   }
-  function handleUpdateService(id, updatedFields) {
-    setServices((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, ...updatedFields } : item,
-      ),
+
+  function handleUpdate(id, updatedData) {
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updatedData } : item)),
     );
   }
 
-  // 1. Фильтрация
-  const filteredByCategory =
-    filter === "Все"
-      ? services
-      : services.filter((item) => item.category === filter);
-
-  // 2. Сортировка по длительности
-  const sortedServices = [...filteredByCategory].sort((a, b) => {
-    return sortOrder === "asc"
-      ? a.duration - b.duration
-      : b.duration - a.duration;
-  });
+  // Фильтрация и сортировка вынесены в вычисляемое свойство, чтобы не засорять рендер
+  const processedItems = items
+    .filter((item) => filterStatus === "Все" || item.status === filterStatus)
+    .sort((a, b) => {
+      const dateA = new Date(a.appointmentDateTime);
+      const dateB = new Date(b.appointmentDateTime);
+      return sortBy === "soonest" ? dateA - dateB : dateB - dateA;
+    });
 
   return (
-    <Layout title="💆 Салон «Здоровье и красота»">
+    <Layout title="Салон «Здоровье и красота»">
+      <div className="controls-panel">
+        <div className="control-group">
+          <label className="control-label">🔍 Фильтр по статусу</label>
+          <select
+            className="control-select"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option value="Все">Все записи</option>
+            <option value="Ожидание">Ожидание</option>
+            <option value="Подтверждено">Подтверждено</option>
+          </select>
+        </div>
+        <div className="control-group">
+          <label className="control-label">📊 Сортировка</label>
+          <select
+            className="control-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="soonest">Сначала ближайшие</option>
+            <option value="latest">Сначала поздние</option>
+          </select>
+        </div>
+      </div>
+
       <section className="section">
-        <h2>📝 Новая запись</h2>
-        <BookingForm onAddItem={handleAddItem} existingServices={services} />
+        <h2 className="section__title">📝 Новая запись</h2>
+        <BookingForm onAddItem={handleAddItem} />
       </section>
 
       <section className="section">
-        <h2>🔍 Фильтр</h2>
-        <FilterPanel activeFilter={filter} onFilterChange={setFilter} />
+        <h2 className="section__title">
+          📋 Мои записи ({processedItems.length})
+        </h2>
+        {processedItems.length === 0 ? (
+          <div className="empty-state">
+            Записи не найдены. Измените фильтр или добавьте новую запись.
+          </div>
+        ) : (
+          <div className="cards-grid">
+            {processedItems.map((item) => (
+              <ServiceCard
+                key={item.id}
+                {...item}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+              />
+            ))}
+          </div>
+        )}
       </section>
-
-      <section className="section">
-        <h2>📋 Мои записи</h2>
-        <ServiceList
-          items={sortedServices}
-          onDelete={handleDelete}
-          onUpdate={handleUpdateService}
-          sortOrder={sortOrder}
-          onSortChange={setSortOrder}
-        />
-      </section>
-
-      <Footer />
     </Layout>
   );
 }
