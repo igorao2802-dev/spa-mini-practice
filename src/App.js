@@ -3,7 +3,6 @@ import Layout from "./components/Layout";
 import BookingForm from "./components/BookingForm";
 import ServiceCard from "./components/ServiceCard";
 
-// ПОЧЕМУ? Ключ для localStorage вынесен в константу — упрощает поддержку и миграцию данных.
 const STORAGE_KEY = "salon-bookings-v1";
 
 const INITIAL_ITEMS = [
@@ -40,8 +39,6 @@ const INITIAL_ITEMS = [
 ];
 
 export default function App() {
-  // ПОЧЕМУ? Функция-инициализатор выполняется только при монтировании,
-  // предотвращая лишние чтения из localStorage при каждом рендере.
   const [items, setItems] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -54,8 +51,6 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState("Все");
   const [sortBy, setSortBy] = useState("soonest");
 
-  // ПОЧЕМУ? useEffect для side-effects. Синхронизация состояния React с внешним хранилищем
-  // должна происходить после успешного рендера, чтобы не блокировать UI.
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
@@ -65,14 +60,10 @@ export default function App() {
   }, [items]);
 
   function handleAddItem(newItem) {
-    // ПОЧЕМУ? Функциональное обновление гарантирует работу с актуальным стейтом
-    // при быстрых последовательных добавлениях (React batching).
     setItems((prev) => [...prev, { ...newItem, id: Date.now() }]);
   }
 
   function handleDelete(id) {
-    // ПОЧЕМУ? filter создаёт новый массив, сохраняя иммутабельность стейта.
-    // splice мутирует исходный массив, что ломает механизм сравнения React и ведёт к багам рендера.
     setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
@@ -82,7 +73,6 @@ export default function App() {
     );
   }
 
-  // Фильтрация и сортировка вынесены в вычисляемое свойство, чтобы не засорять рендер
   const processedItems = items
     .filter((item) => filterStatus === "Все" || item.status === filterStatus)
     .sort((a, b) => {
@@ -93,6 +83,13 @@ export default function App() {
 
   return (
     <Layout title="Салон «Здоровье и красота»">
+      {/* ИЗМЕНЕНИЕ: Форма записи теперь идет первой, так как это основное действие пользователя */}
+      <section className="section">
+        <h2 className="section__title">📝 Новая запись</h2>
+        <BookingForm onAddItem={handleAddItem} />
+      </section>
+
+      {/* ИЗМЕНЕНИЕ: Панель фильтров перенесена сюда, чтобы быть непосредственно перед списком */}
       <div className="controls-panel">
         <div className="control-group">
           <label className="control-label">🔍 Фильтр по статусу</label>
@@ -120,13 +117,9 @@ export default function App() {
       </div>
 
       <section className="section">
-        <h2 className="section__title">📝 Новая запись</h2>
-        <BookingForm onAddItem={handleAddItem} />
-      </section>
-
-      <section className="section">
         <h2 className="section__title">
-          📋 Мои записи ({processedItems.length})
+          {" "}
+          Мои записи ({processedItems.length})
         </h2>
         {processedItems.length === 0 ? (
           <div className="empty-state">

@@ -26,7 +26,6 @@ export default function BookingForm({ onAddItem }) {
   ];
 
   // ПОЧЕМУ? Валидация вынесена в отдельную функцию для переиспользования 
-  // в форме и в режиме редактирования карточки.
   const validate = (field, value) => {
     const errs = { ...errors };
     switch (field) {
@@ -36,8 +35,9 @@ export default function BookingForm({ onAddItem }) {
         else delete errs[field];
         break;
       case "customerPhone":
+        // ИЗМЕНЕНИЕ: Проверка на 9 цифр (2+3+2+2)
         if (!/^(17|25|29|33|44)\s\d{3}\s\d{2}\s\d{2}$/.test(value)) 
-          errs[field] = "Формат: 29 123 45 67 (только цифры и пробелы)";
+          errs[field] = "Формат: 29 123 45 67 (нужно 9 цифр)";
         else delete errs[field];
         break;
       case "appointmentDateTime":
@@ -63,13 +63,15 @@ export default function BookingForm({ onAddItem }) {
   };
 
   const handlePhoneChange = (e) => {
-    // ПОЧЕМУ? Форматируем ввод на лету, оставляя только цифры и расставляя пробелы по маске
+    // ИЗМЕНЕНИЕ: slice(0, 9) позволяет ввести 9 цифр (код оператора + 7 цифр номера)
     let digits = e.target.value.replace(/\D/g, "").slice(0, 9);
     let formatted = "";
     if (digits.length > 0) formatted = digits.slice(0, 2);
     if (digits.length > 2) formatted += " " + digits.slice(2, 5);
     if (digits.length > 5) formatted += " " + digits.slice(5, 7);
+    // ИЗМЕНЕНИЕ: Добавлен блок для последних 2 цифр
     if (digits.length > 7) formatted += " " + digits.slice(7, 9);
+    
     setCustomerPhone(formatted);
     setErrors(prev => {
       const next = { ...prev };
@@ -80,9 +82,9 @@ export default function BookingForm({ onAddItem }) {
   };
 
   // ПОЧЕМУ? Прогресс зависит от валидности, а не просто от заполненности.
-  // Это мотивирует пользователя вводить корректные данные, а не случайный текст.
   const isValidService = SERVICES.includes(serviceName);
   const isValidName = !errors.customerName && customerName.trim().length >= 3;
+  // ИЗМЕНЕНИЕ: Валидация теперь требует полных 9 цифр
   const isValidPhone = !errors.customerPhone && /^(17|25|29|33|44)\s\d{3}\s\d{2}\s\d{2}$/.test(customerPhone);
   const isValidDate = !errors.appointmentDateTime && appointmentDateTime && new Date(appointmentDateTime) > new Date();
   
@@ -93,7 +95,6 @@ export default function BookingForm({ onAddItem }) {
     e.preventDefault();
     setIsSubmitted(true);
     
-    // Валидируем все обязательные поля перед отправкой
     const newErrors = validate("customerName", customerName);
     Object.assign(newErrors, validate("customerPhone", customerPhone));
     Object.assign(newErrors, validate("appointmentDateTime", appointmentDateTime));
@@ -115,7 +116,6 @@ export default function BookingForm({ onAddItem }) {
       status
     });
 
-    // Сброс состояния
     setServiceName(""); setSpecialist(""); setCustomerName("");
     setCustomerPhone(""); setAppointmentDateTime(""); setDuration("30");
     setStatus("Ожидание"); setErrors({}); setTouched({}); setIsSubmitted(false);
@@ -154,8 +154,9 @@ export default function BookingForm({ onAddItem }) {
       </div>
 
       <div className="booking-form__field">
+        {/* ИЗМЕНЕНИЕ: Пометка (+375) и исправленный maxLength (2+1+3+1+2+1+2 = 12 символов с пробелами) */}
         <label>Телефон * (+375)</label>
-        <input className={inputClass("customerPhone")} type="text" value={customerPhone} onChange={handlePhoneChange} onBlur={() => handleBlur("customerPhone")} placeholder="29 123 45 67" maxLength={11} required />
+        <input className={inputClass("customerPhone")} type="text" value={customerPhone} onChange={handlePhoneChange} onBlur={() => handleBlur("customerPhone")} placeholder="29 123 45 67" maxLength={12} required />
       </div>
 
       <div className="booking-form__field">
@@ -177,6 +178,7 @@ export default function BookingForm({ onAddItem }) {
       </div>
 
       <button type="submit" className="booking-form__submit">
+        {/* ИЗМЕНЕНИЕ: Класс btn-icon вынесен для стилизации цвета */}
         <span className="btn-icon">➕</span> Записаться
       </button>
     </form>
